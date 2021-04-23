@@ -14,7 +14,8 @@ SET(targetname pyxnect)
 # Specify the libraries to use #
 ################################
 
-#INCLUDE(${PROJECT_SOURCE_DIR}/cmake/UseOpenCV.cmake)
+INCLUDE(${PROJECT_SOURCE_DIR}/cmake/UseCUDA.cmake)
+INCLUDE(${PROJECT_SOURCE_DIR}/cmake/UseXNect.cmake)
 
 ##########################################
 # Specify additional include directories #
@@ -34,7 +35,8 @@ SET_TARGET_PROPERTIES(${targetname} PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}" 
 #################################
 
 TARGET_LINK_LIBRARIES(${targetname} debug pybind11::module optimized pybind11::module)
-#INCLUDE(${PROJECT_SOURCE_DIR}/cmake/LinkOpenCV.cmake)
+INCLUDE(${PROJECT_SOURCE_DIR}/cmake/LinkCUDA.cmake)
+INCLUDE(${PROJECT_SOURCE_DIR}/cmake/LinkXNect.cmake)
 
 ##########################################
 # Copy resource files to the right place #
