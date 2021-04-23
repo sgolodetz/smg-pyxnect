@@ -23,22 +23,6 @@ SET(XNect_INCLUDE_DIRS
 "${XNect_ROOT_DIR}/extern/mongoose/mongoose"
 "${XNect_ROOT_DIR}/extern/rtpose"
 "${XNect_ROOT_DIR}/extern/xnect/include"
-
-#D:\xnect\src
-#C:\Users\Stuart Golodetz\.caffe\dependencies\libraries_v140_x64_py35_1.1.0\libraries\include
-#C:\Users\Stuart Golodetz\.caffe\dependencies\libraries_v140_x64_py35_1.1.0\libraries\include\opencv
-#C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\include
-#D:\xnect\extern\eigen
-#D:\xnect\extern\eigen\unsupported
-#D:\caffe\build
-#D:\caffe\build\include
-#D:\xnect\extern\xnect\include
-#D:\xnect\extern\rtpose
-#D:\xnect\extern\mongoose
-#D:\xnect\extern\mongoose\mongoose
-#C:\Users\Stuart Golodetz\.caffe\dependencies\libraries_v140_x64_py35_1.1.0\libraries\include\boost-1_61
-#D:\caffe\include
-#C:\Users\Stuart Golodetz\.caffe\dependencies\libraries_v140_x64_py35_1.1.0\libraries\Include
 )
 
 INCLUDE_DIRECTORIES(${XNect_INCLUDE_DIRS})
