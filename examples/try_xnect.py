@@ -42,9 +42,11 @@ def main() -> None:
 
     xnect = XNect()
 
-    for i in range(50):
-        img = cv2.imread("C:/smglib/smg-mapping/output-skeleton2/frame-{:06d}.color.png".format(i), cv2.IMREAD_UNCHANGED)
+    for i in range(250):
+        img = cv2.imread("C:/smglib/smg-mapping/output-xnect/frame-{:06d}.color.png".format(i), cv2.IMREAD_UNCHANGED)
 
+        img = img[:, 80:560, :]
+        img = cv2.resize(img, (2048, 2048))
         xnect.process_image(img)
         img = cv2.resize(img, (1024, 1024))
 
@@ -58,7 +60,7 @@ def main() -> None:
 
         cv2.imshow("Image", img)
         if interesting:
-            cv2.waitKey()
+            cv2.waitKey(50)
         else:
             cv2.waitKey(1)
 
