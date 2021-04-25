@@ -17,7 +17,7 @@ class SkeletonDetector:
     def __init__(self, *, debug: bool = False, exe_dir: str = "D:/xnect/bin/Release"):
         # Specify the keypoint names (see xnect_implementation.h).
         self.__keypoint_names = {
-            0: "Head TOP",
+            0: "Head Top",
             1: "Neck",
             2: "RShoulder",
             3: "RElbow",
@@ -31,9 +31,9 @@ class SkeletonDetector:
             11: "LHip",
             12: "LKnee",
             13: "LAnkle",
-            14: "Root",
+            14: "MidHip",  # XNect calls this "Root", but we use "MidHip" for consistency with other detectors
             15: "Spine",
-            16: "Head",
+            16: "Nose",  # XNect calls this "Head", but we use "Nose" for consistency with other detectors
             17: "RHand",
             18: "LHand",
             19: "RFoot",
@@ -43,7 +43,8 @@ class SkeletonDetector:
         # Specify which keypoints are joined to form bones.
         self.__keypoint_pairs = [
             (self.__keypoint_names[i], self.__keypoint_names[j]) for i, j in [
-                (2, 3), (3, 4), (5, 6), (6, 7), (8, 9), (9, 10), (11, 12), (12, 13)
+                (1, 2), (1, 5), (1, 14), (1, 16), (2, 3), (3, 4), (5, 6), (6, 7), (8, 9), (8, 14), (9, 10),
+                (11, 12), (11, 14), (12, 13)
             ]
         ]
 
@@ -87,7 +88,9 @@ class SkeletonDetector:
                 # Note: As in the sample code, we ignore the feet, as they can be unstable.
                 for joint_id in range(self.__xnect.get_num_of_3d_joints() - 2):
                     name = self.__keypoint_names[joint_id]
-                    position = self.__xnect.get_joint3d_ik(person_id, joint_id)
+                    position = self.__xnect.get_joint3d_ik(person_id, joint_id) / 1000
+                    position[0] *= -1
+                    position[1] *= -1
                     position = GeometryUtil.apply_rigid_transform(world_from_camera, position)
                     skeleton_keypoints[name] = Skeleton.Keypoint(name, position)
 
