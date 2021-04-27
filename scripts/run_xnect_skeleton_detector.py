@@ -11,6 +11,7 @@ import pygame
 # noinspection PyPackageRequirements
 from OpenGL.GL import *
 from timeit import default_timer as timer
+from typing import Tuple
 
 from smg.opengl import OpenGLMatrixContext, OpenGLUtil
 from smg.openni import OpenNICamera
@@ -26,7 +27,7 @@ def main() -> None:
 
     # Initialise PyGame and create the window.
     pygame.init()
-    window_size = (640, 480)
+    window_size = (640, 480)  # type: Tuple[int, int]
     pygame.display.set_mode(window_size, pygame.DOUBLEBUF | pygame.OPENGL)
     pygame.display.set_caption("XNect 3D Skeleton Detector")
 
