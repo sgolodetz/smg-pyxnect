@@ -1,0 +1,35 @@
+name: xnect
+channels:
+  - defaults
+dependencies:
+  - blas=1.0=mkl
+  - certifi=2020.6.20=pyhd3eb1b0_3
+  - icc_rt=2019.0.0=h0cc432a_1
+  - intel-openmp=2021.2.0=haa95532_616
+  - llvmlite=0.24.0=py35h6538335_0
+  - mkl=2021.2.0=haa95532_296
+  - numba=0.39.0=py35h830ac7b_0
+  - python=3.5.6=he025d50_0
+  - setuptools=40.2.0=py35_0
+  - vc=14.2=h21ff451_1
+  - vs2015_runtime=14.27.29016=h5e58377_2
+  - wheel=0.36.2=pyhd3eb1b0_0
+  - wincertstore=0.2=py35hfebbdb8_0
+  - pip:
+    - cycler==0.10.0
+    - func-timeout==4.3.5
+    - kiwisolver==1.1.0
+    - matplotlib==3.0.3
+    - numpy==1.18.5
+    - opencv-contrib-python==3.4.2.16
+    - openni==2.3.0
+    - pip==20.3.4
+    - pybind11==2.6.2
+    - pygame==2.0.1
+    - pyopengl==3.1.5
+    - pyparsing==2.4.7
+    - python-dateutil==2.8.1
+    - scipy==1.4.1
+    - six==1.15.0
+    - vg==1.9.0
+prefix: C:\ProgramData\Anaconda3\envs\xnect
