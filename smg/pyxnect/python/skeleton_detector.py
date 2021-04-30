@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import os
 
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from smg.pyxnect import XNect
 from smg.skeletons import Skeleton
@@ -14,7 +14,17 @@ class SkeletonDetector:
 
     # CONSTRUCTOR
 
-    def __init__(self, *, debug: bool = False, exe_dir: str = "D:/xnect/bin/Release"):
+    def __init__(self, *, exe_dir: str = "D:/xnect/bin/Release"):
+        """
+        Construct a 3D skeleton detector based on XNect.
+
+        .. note::
+            The reason for requiring the directory containing the XNect executable is that the
+            XNect implementers hard-coded the paths (for some reason), so we need to change to
+            this directory before trying to initialise XNect.
+
+        :param exe_dir:     The directory containing the XNect executable.
+        """
         # Specify the keypoint names (see xnect_implementation.h).
         self.__keypoint_names = {
             0: "Head Top",
@@ -33,7 +43,7 @@ class SkeletonDetector:
             13: "LAnkle",
             14: "MidHip",  # XNect calls this "Root", but we use "MidHip" for consistency with other detectors
             15: "Spine",
-            16: "Nose",  # XNect calls this "Head", but we use "Nose" for consistency with other detectors
+            16: "Nose",    # XNect calls this "Head", but we use "Nose" for consistency with other detectors
             17: "RHand",
             18: "LHand",
             19: "RFoot",
@@ -41,6 +51,7 @@ class SkeletonDetector:
         }
 
         # Specify which keypoints are joined to form bones.
+        # FIXME: I haven't connected all of the joints yet.
         self.__keypoint_pairs = [
             (self.__keypoint_names[i], self.__keypoint_names[j]) for i, j in [
                 (1, 2), (1, 5), (1, 14), (1, 16), (2, 3), (3, 4), (5, 6), (6, 7), (8, 9), (8, 14), (9, 10),
@@ -48,19 +59,25 @@ class SkeletonDetector:
             ]
         ]
 
-        # Change to the XNect executable directory. The XNect guys hard-coded the paths for some reason (argh!).
+        # Change to the XNect executable directory.
         os.chdir(exe_dir)
 
         # Initialise XNect.
         self.__xnect = XNect()
 
-        # Enable debugging if requested.
-        self.__debug = debug
-
     # PUBLIC METHODS
 
     def detect_skeletons(self, image: np.ndarray, world_from_camera: np.ndarray, *,
                          visualise: bool = False) -> Tuple[List[Skeleton], np.ndarray]:
+        """
+        Detect 3D skeletons in an RGB image using XNect.
+
+        :param image:               The RGB image.
+        :param world_from_camera:   The camera pose.
+        :param visualise:           Whether to make the output visualisation.
+        :return:                    A tuple consisting of the detected 3D skeletons and the output visualisation
+                                    (if requested).
+        """
         # Prepare the XNect input image.
         height, width = image.shape[:2]
         xnect_input_size = (2048, 2048)
@@ -78,14 +95,17 @@ class SkeletonDetector:
         self.__xnect.process_image(xnect_input_image)
 
         # Make the actual skeletons, and also the output visualisation if requested.
-        skeletons = []
-        visualisation = image.copy()
+        skeletons = []                # type: List[Skeleton]
+        visualisation = image.copy()  # type: np.ndarray
 
+        # For each person index:
         for person_id in range(self.__xnect.get_num_of_people()):
+            # If a person was detected with this index:
             if self.__xnect.is_person_active(person_id):
-                skeleton_keypoints = {}
+                # Make a skeleton for the person and add it to the list.
+                skeleton_keypoints = {}  # type: Dict[str, Skeleton.Keypoint]
 
-                # Note: As in the sample code, we ignore the feet, as they can be unstable.
+                # For each joint (ignoring the feet, as in the sample code, as they can be unstable):
                 for joint_id in range(self.__xnect.get_num_of_3d_joints() - 2):
                     name = self.__keypoint_names[joint_id]
                     position = self.__xnect.get_joint3d_ik(person_id, joint_id) / 1000
@@ -106,45 +126,82 @@ class SkeletonDetector:
     # PRIVATE METHODS
 
     def __draw_bones(self, image: np.ndarray, person_id: int) -> None:
-        # Note: As in the sample code, we ignore the feet, as they can be unstable.
+        """
+        Draw the bones for the specified person onto an image.
+
+        :param image:       The image onto which to draw the bones.
+        :param person_id:   The index of the person whose bones are to be drawn.
+        """
+        # For each joint (ignoring the feet, as in the sample code, as they can be unstable):
         for joint_id in range(self.__xnect.get_num_of_3d_joints() - 2):
-            parent_id = self.__xnect.get_joint3d_parent(joint_id)
+            # Try to look up the joint's parent. If it doesn't have one, continue.
+            parent_id = self.__xnect.get_joint3d_parent(joint_id)  # type: int
             if parent_id == -1:
                 continue
 
-            # lookup 2 connected body/hand parts
-            part_a = SkeletonDetector.__scale_to_image(
+            # Compute the 2D positions of the bone's two endpoints.
+            endpoint_a = SkeletonDetector.__scale_to_image(
                 self.__xnect.project_with_intrinsics(self.__xnect.get_joint3d_ik(person_id, joint_id)), image
             )
-            part_b = SkeletonDetector.__scale_to_image(
+            endpoint_b = SkeletonDetector.__scale_to_image(
                 self.__xnect.project_with_intrinsics(self.__xnect.get_joint3d_ik(person_id, parent_id)), image
             )
 
-            if part_a[0] <= 0 or part_a[1] <= 0 or part_b[0] <= 0 or part_b[1] <= 0:
+            # If the endpoints are out of range, skip this bone.
+            # FIXME: This is based on the sample code, but I don't get why the lower bounds are tested
+            #        and the upper bounds aren't. This seems worth checking.
+            if endpoint_a[0] <= 0 or endpoint_a[1] <= 0 or endpoint_b[0] <= 0 or endpoint_b[1] <= 0:
                 continue
 
-            colour = self.__get_person_colour(person_id)
-            cv2.line(image, part_a, part_b, colour, 4)
+            # Draw the bone.
+            colour = self.__get_person_colour(person_id)  # type: List[int]
+            cv2.line(image, endpoint_a, endpoint_b, colour, 4)
 
     def __draw_joints(self, image: np.ndarray, person_id: int) -> None:
+        """
+        Draw the joints for the specified person onto an image.
+
+        :param image:       The image onto which to draw the joints.
+        :param person_id:   The index of the prson whose joints are to be drawn.
+        """
+        # Specify the parameters to pass to cv2.circle when drawing the joints.
         radius = 6
         thickness = -1
 
-        # Note: As in the sample code, we ignore the feet, as they can be unstable.
+        # For each joint (ignoring the feet, as in the sample code, as they can be unstable):
         for joint_id in range(self.__xnect.get_num_of_3d_joints() - 2):
+            # Compute the 2D position of the joint.
             pos = SkeletonDetector.__scale_to_image(
                 self.__xnect.project_with_intrinsics(self.__xnect.get_joint3d_ik(person_id, joint_id)), image
             )
-            colour = self.__get_person_colour(person_id)
+
+            # Draw the joint.
+            colour = self.__get_person_colour(person_id)  # type: List[int]
             cv2.circle(image, pos, radius, colour, thickness)
 
-    def __get_person_colour(self, person_id) -> List[int]:
+    def __get_person_colour(self, person_id: int) -> List[int]:
+        """
+        Get the colour assigned to the specified person.
+
+        .. note::
+            This gets the person's colour from XNect, and converts it into a representation that can be used by OpenCV.
+
+        :param person_id:   The person whose assigned colour we want to get.
+        :return:            The colour assigned to the person, as a list of integers.
+        """
         return [int(_) for _ in self.__xnect.get_person_colour(person_id)]
 
     # PRIVATE STATIC METHODS
 
     @staticmethod
     def __scale_to_image(pos: np.ndarray, image: np.ndarray) -> Tuple[int, int]:
+        """
+        TODO
+
+        :param pos:     TODO
+        :param image:   TODO
+        :return:        TODO
+        """
         height, width = image.shape[:2]
-        # TODO: Correct for cropping.
+        # FIXME: Correct for cropping.
         return tuple(np.round((pos[0] * width / 1024, pos[1] * height / 1024)).astype(int))
