@@ -78,20 +78,8 @@ class SkeletonDetector:
         :return:                    A tuple consisting of the detected 3D skeletons and the output visualisation
                                     (if requested).
         """
-        # Prepare the XNect input image. This involves cropping it to be square, then upsampling it.
-        height, width = image.shape[:2]
-        offset = abs(width - height) // 2
-        xnect_input_size = (2048, 2048)
-
-        if width > height:
-            xnect_input_image = cv2.resize(image[:, offset:width-offset, :], xnect_input_size)
-        elif height > width:
-            xnect_input_image = cv2.resize(image[offset:height-offset, :], xnect_input_size)
-        else:
-            xnect_input_image = image.copy()
-
         # Use XNect to detect any people in the image.
-        self.__xnect.process_image(xnect_input_image)
+        self.__xnect.process_image(image.copy())
 
         # Make the actual skeletons, and also the output visualisation if requested.
         skeletons = []                # type: List[Skeleton]
@@ -218,14 +206,4 @@ class SkeletonDetector:
         :param input_shape:     The shape of the original input image.
         :return:                The equivalent joint position in the original input image.
         """
-        height, width = input_shape[:2]
-        offset = abs(width - height) // 2
-
-        if width >= height:
-            x = pos[0] * height / 1024 + offset
-            y = pos[1] * height / 1024
-        else:
-            x = pos[0] * width / 1024
-            y = pos[1] * width / 1024 + offset
-
-        return tuple(np.round((x, y)).astype(int))
+        return tuple(np.round(pos).astype(int))
