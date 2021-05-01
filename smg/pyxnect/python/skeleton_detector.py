@@ -78,15 +78,14 @@ class SkeletonDetector:
         :return:                    A tuple consisting of the detected 3D skeletons and the output visualisation
                                     (if requested).
         """
-        # Prepare the XNect input image.
+        # Prepare the XNect input image. This involves cropping it to be square, then upsampling it.
         height, width = image.shape[:2]
+        offset = abs(width - height) // 2
         xnect_input_size = (2048, 2048)
 
         if width > height:
-            offset = (width - height) // 2
             xnect_input_image = cv2.resize(image[:, offset:width-offset, :], xnect_input_size)
         elif height > width:
-            offset = (height - width) // 2
             xnect_input_image = cv2.resize(image[offset:height-offset, :], xnect_input_size)
         else:
             xnect_input_image = image.copy()
@@ -127,9 +126,9 @@ class SkeletonDetector:
 
     def __draw_bones(self, image: np.ndarray, person_id: int) -> None:
         """
-        Draw the bones for the specified person onto an image.
+        Draw the bones for the specified person onto an image the shape of the input image.
 
-        :param image:       The image onto which to draw the bones.
+        :param image:       The image onto which to draw the bones (must have the same shape as the input image).
         :param person_id:   The index of the person whose bones are to be drawn.
         """
         # For each joint (ignoring the feet, as in the sample code, as they can be unstable):
@@ -140,12 +139,8 @@ class SkeletonDetector:
                 continue
 
             # Compute the 2D positions of the bone's two endpoints.
-            endpoint_a = SkeletonDetector.__scale_to_image(
-                self.__xnect.project_with_intrinsics(self.__xnect.get_joint3d_ik(person_id, joint_id)), image
-            )
-            endpoint_b = SkeletonDetector.__scale_to_image(
-                self.__xnect.project_with_intrinsics(self.__xnect.get_joint3d_ik(person_id, parent_id)), image
-            )
+            endpoint_a = self.__get_joint_pos_2d(person_id, joint_id, image.shape)   # type: Tuple[int, int]
+            endpoint_b = self.__get_joint_pos_2d(person_id, parent_id, image.shape)  # type: Tuple[int, int]
 
             # If the endpoints are out of range, skip this bone.
             # FIXME: This is based on the sample code, but I don't get why the lower bounds are tested
@@ -159,9 +154,9 @@ class SkeletonDetector:
 
     def __draw_joints(self, image: np.ndarray, person_id: int) -> None:
         """
-        Draw the joints for the specified person onto an image.
+        Draw the joints for the specified person onto an image the shape of the input image.
 
-        :param image:       The image onto which to draw the joints.
+        :param image:       The image onto which to draw the joints (must have the same shape as the input image).
         :param person_id:   The index of the prson whose joints are to be drawn.
         """
         # Specify the parameters to pass to cv2.circle when drawing the joints.
@@ -171,13 +166,25 @@ class SkeletonDetector:
         # For each joint (ignoring the feet, as in the sample code, as they can be unstable):
         for joint_id in range(self.__xnect.get_num_of_3d_joints() - 2):
             # Compute the 2D position of the joint.
-            pos = SkeletonDetector.__scale_to_image(
-                self.__xnect.project_with_intrinsics(self.__xnect.get_joint3d_ik(person_id, joint_id)), image
-            )
+            pos = self.__get_joint_pos_2d(person_id, joint_id, image.shape)  # type: Tuple[int, int]
 
             # Draw the joint.
             colour = self.__get_person_colour(person_id)  # type: List[int]
             cv2.circle(image, pos, radius, colour, thickness)
+
+    def __get_joint_pos_2d(self, person_id: int, joint_id: int, input_shape: tuple) -> Tuple[int, int]:
+        """
+        Get the position of the specified joint for the specified person in an image the shape of the input image.
+
+        :param person_id:   The index of a person.
+        :param joint_id:    The index of a joint.
+        :param input_shape: The shape of the original input image.
+        :return:            The position of the specified joint for the specified person in an image the shape
+                            of the original input image.
+        """
+        return SkeletonDetector.__map_output_pos_to_input_pos(
+            self.__xnect.project_with_intrinsics(self.__xnect.get_joint3d_ik(person_id, joint_id)), input_shape
+        )
 
     def __get_person_colour(self, person_id: int) -> List[int]:
         """
@@ -194,14 +201,31 @@ class SkeletonDetector:
     # PRIVATE STATIC METHODS
 
     @staticmethod
-    def __scale_to_image(pos: np.ndarray, image: np.ndarray) -> Tuple[int, int]:
+    def __map_output_pos_to_input_pos(pos: np.ndarray, input_shape: tuple) -> Tuple[int, int]:
         """
-        TODO
+        Map a 2D joint position output by XNect to its equivalent position in the original input image.
 
-        :param pos:     TODO
-        :param image:   TODO
-        :return:        TODO
+        .. note::
+            The input image was of size w x h. Without loss of generality, suppose we had w >= h, which is common.
+            To get the XNect input, we centre-cropped the w x h image to make an image of size h x h, then scaled
+            it up to 2048 x 2048. XNect outputs joints as positions (ox,oy) in a 1024 x 1024 image corresponding to
+            the 2048 x 2048 input it was given. To work out where these would have been in the original input image,
+            we must first scale these down to make them positions in the h x h image, then add an offset of (w-h)/2
+            to the x coordinate. We thus get (ox * h / 1024 + (w-h)/2, oy * h / 1024), as shown in the code. Note
+            that if we have h > w, we can simply do this the other way round.
+
+        :param pos:             The joint position as output by XNect.
+        :param input_shape:     The shape of the original input image.
+        :return:                The equivalent joint position in the original input image.
         """
-        height, width = image.shape[:2]
-        # FIXME: Correct for cropping.
-        return tuple(np.round((pos[0] * width / 1024, pos[1] * height / 1024)).astype(int))
+        height, width = input_shape[:2]
+        offset = abs(width - height) // 2
+
+        if width >= height:
+            x = pos[0] * height / 1024 + offset
+            y = pos[1] * height / 1024
+        else:
+            x = pos[0] * width / 1024
+            y = pos[1] * width / 1024 + offset
+
+        return tuple(np.round((x, y)).astype(int))
