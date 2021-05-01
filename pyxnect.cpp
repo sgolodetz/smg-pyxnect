@@ -33,6 +33,19 @@ PYBIND11_MODULE(pyxnect, m)
       py::call_guard<py::gil_scoped_release>()*/
     )
     .def("get_joint3d_parent", &XNECT::getJoint3DParent, py::call_guard<py::gil_scoped_release>())
+    .def(
+      "get_joint3d_pred",
+      [](XNECT& self, int person, int joint)
+      {
+        cv::Vec3f rawResult = self.getJoint3DPred(person, joint);
+        auto result = py::array_t<double>(3);
+        py::buffer_info buf = result.request();
+        double *ptr = (double*)buf.ptr;
+        for(int i = 0; i < 3; ++i) ptr[i] = rawResult[i];
+        return result;
+      }/*,
+      py::call_guard<py::gil_scoped_release>()*/
+    )
     .def("get_num_of_3d_joints", &XNECT::getNumOf3DJoints, py::call_guard<py::gil_scoped_release>())
     .def("get_num_of_people", &XNECT::getNumOfPeople, py::call_guard<py::gil_scoped_release>())
     .def(

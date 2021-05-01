@@ -51,11 +51,10 @@ class SkeletonDetector:
         }
 
         # Specify which keypoints are joined to form bones.
-        # FIXME: I haven't connected all of the joints yet.
         self.__keypoint_pairs = [
             (self.__keypoint_names[i], self.__keypoint_names[j]) for i, j in [
-                (1, 2), (1, 5), (1, 14), (1, 16), (2, 3), (3, 4), (5, 6), (6, 7), (8, 9), (8, 14), (9, 10),
-                (11, 12), (11, 14), (12, 13)
+                (0, 16), (1, 2), (1, 5), (1, 14), (1, 16), (2, 3), (3, 4), (4, 17), (5, 6), (6, 7), (7, 18),
+                (8, 9), (8, 14), (9, 10), (11, 12), (11, 14), (12, 13)
             ]
         ]
 
