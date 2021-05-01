@@ -84,7 +84,7 @@ def main() -> None:
                 colour_image = receiver.get_rgb_image()  # type: np.ndarray
                 tracker_w_t_c = receiver.get_pose()  # type: np.ndarray
 
-                # Use LCR-Net to detect 3D skeletons in the colour image.
+                # Use XNect to detect 3D skeletons in the colour image.
                 start = timer()
                 skeletons_3d, visualisation = skeleton_detector.detect_skeletons(
                     colour_image, tracker_w_t_c, visualise=True
