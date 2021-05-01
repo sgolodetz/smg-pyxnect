@@ -29,8 +29,8 @@ PYBIND11_MODULE(pyxnect, m)
         double *ptr = (double*)buf.ptr;
         for(int i = 0; i < 3; ++i) ptr[i] = rawResult[i];
         return result;
-      },
-      py::call_guard<py::gil_scoped_release>()
+      }/*,
+      py::call_guard<py::gil_scoped_release>()*/
     )
     .def("get_joint3d_parent", &XNECT::getJoint3DParent, py::call_guard<py::gil_scoped_release>())
     .def("get_num_of_3d_joints", &XNECT::getNumOf3DJoints, py::call_guard<py::gil_scoped_release>())
@@ -45,23 +45,23 @@ PYBIND11_MODULE(pyxnect, m)
         int *ptr = (int*)buf.ptr;
         for(int i = 0; i < 3; ++i) ptr[i] = rawResult[i];
         return result;
-      },
-      py::call_guard<py::gil_scoped_release>()
+      }/*,
+      py::call_guard<py::gil_scoped_release>()*/
     )
     .def("is_person_active", &XNECT::isPersonActive, py::call_guard<py::gil_scoped_release>())
     .def(
       "process_image",
-      [](XNECT& self, py::array_t<uint8_t>& img)
+      [](XNECT& self, py::array_t<uint8_t> img)
       {
         py::buffer_info buf = img.request();
         cv::Mat mat((int)buf.shape[0], (int)buf.shape[1], CV_8UC3, (unsigned char*)buf.ptr);
         self.processImg(mat);
-      },
-      py::call_guard<py::gil_scoped_release>()
+      }/*,
+      py::call_guard<py::gil_scoped_release>()*/
     )
     .def(
       "project_with_intrinsics",
-      [](XNECT& self, py::array_t<float>& point)
+      [](XNECT& self, py::array_t<float> point)
       {
         py::buffer_info pointBuf = point.request();
         float *pointPtr = (float*)pointBuf.ptr;
@@ -73,8 +73,8 @@ PYBIND11_MODULE(pyxnect, m)
         for(int i = 0; i < 2; ++i) resultPtr[i] = rawResult[i];
 
         return result;
-      },
-      py::call_guard<py::gil_scoped_release>()
+      }/*,
+      py::call_guard<py::gil_scoped_release>()*/
     )
   ;
 }

@@ -133,12 +133,6 @@ class SkeletonDetector:
             endpoint_a = self.__get_joint_pos_2d(person_id, joint_id)   # type: Tuple[int, int]
             endpoint_b = self.__get_joint_pos_2d(person_id, parent_id)  # type: Tuple[int, int]
 
-            # If the endpoints are out of range, skip this bone.
-            # FIXME: This is based on the sample code, but I don't get why the lower bounds are tested
-            #        and the upper bounds aren't. This seems worth checking.
-            if endpoint_a[0] <= 0 or endpoint_a[1] <= 0 or endpoint_b[0] <= 0 or endpoint_b[1] <= 0:
-                continue
-
             # Draw the bone.
             colour = self.__get_person_colour(person_id)  # type: List[int]
             cv2.line(image, endpoint_a, endpoint_b, colour, 4)
@@ -171,8 +165,9 @@ class SkeletonDetector:
         :param joint_id:    The index of the joint.
         :return:            The position of the specified joint for the specified detected person.
         """
-        pos = self.__xnect.project_with_intrinsics(self.__xnect.get_joint3d_ik(person_id, joint_id))  # type: np.ndarray
-        return tuple(np.round(pos).astype(int))
+        pos3d = self.__xnect.get_joint3d_ik(person_id, joint_id)  # type: np.ndarray
+        pos2d = self.__xnect.project_with_intrinsics(pos3d)       # type: np.ndarray
+        return tuple(np.round(pos2d).astype(int))
 
     def __get_person_colour(self, person_id: int) -> List[int]:
         """
