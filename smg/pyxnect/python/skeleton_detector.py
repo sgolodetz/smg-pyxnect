@@ -48,7 +48,7 @@ class SkeletonDetector:
             18: "LHand",
             19: "RFoot",
             20: "LFoot"
-        }
+        }  # type: Dict[int, str]
 
         # Specify which keypoints are joined to form bones.
         self.__keypoint_pairs = [
@@ -56,7 +56,7 @@ class SkeletonDetector:
                 (0, 16), (1, 2), (1, 5), (1, 14), (1, 16), (2, 3), (3, 4), (4, 17), (5, 6), (6, 7), (7, 18),
                 (8, 9), (8, 14), (9, 10), (11, 12), (11, 14), (12, 13)
             ]
-        ]
+        ]  # type: List[Tuple[str, str]]
 
         # Change to the XNect executable directory.
         os.chdir(exe_dir)
@@ -144,8 +144,8 @@ class SkeletonDetector:
         :param person_id:   The index of the person whose joints are to be drawn.
         """
         # Specify the parameters to pass to cv2.circle when drawing the joints.
-        radius = 6
-        thickness = -1
+        radius = 6      # type: int
+        thickness = -1  # type: int
 
         # For each joint (ignoring the feet, as in the sample code, as they can be unstable):
         for joint_id in range(self.__xnect.get_num_of_3d_joints() - 2):
