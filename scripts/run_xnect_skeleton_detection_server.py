@@ -20,7 +20,7 @@ from smg.pyxnect import SkeletonDetector
 from smg.rigging.cameras import SimpleCamera
 from smg.rigging.controllers import KeyboardCameraController
 from smg.rigging.helpers import CameraPoseConverter
-from smg.skeletons import Skeleton, SkeletonRenderer
+from smg.skeletons import Skeleton3D, SkeletonRenderer
 from smg.utility import GeometryUtil, PooledQueue
 
 
@@ -51,7 +51,7 @@ def main() -> None:
         image_size = None  # type: Optional[Tuple[int, int]]
         intrinsics = None  # type: Optional[Tuple[float, float, float, float]]
         receiver = RGBDFrameReceiver()
-        skeletons_3d = []  # type: List[Skeleton]
+        skeletons_3d = []  # type: List[Skeleton3D]
 
         # Construct the skeleton detector.
         skeleton_detector = SkeletonDetector()

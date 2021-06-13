@@ -5,7 +5,7 @@ import os
 from typing import Dict, List, Tuple
 
 from smg.pyxnect import XNect
-from smg.skeletons import Skeleton
+from smg.skeletons import Skeleton3D
 from smg.utility import GeometryUtil
 
 
@@ -67,7 +67,7 @@ class SkeletonDetector:
     # PUBLIC METHODS
 
     def detect_skeletons(self, image: np.ndarray, world_from_camera: np.ndarray, *,
-                         visualise: bool = False) -> Tuple[List[Skeleton], np.ndarray]:
+                         visualise: bool = False) -> Tuple[List[Skeleton3D], np.ndarray]:
         """
         Detect 3D skeletons in an RGB image using XNect.
 
@@ -82,7 +82,7 @@ class SkeletonDetector:
         self.__xnect.process_image(image.copy())
 
         # Make the actual skeletons, and also the output visualisation if requested.
-        skeletons = []                # type: List[Skeleton]
+        skeletons = []                # type: List[Skeleton3D]
         visualisation = image.copy()  # type: np.ndarray
 
         # For each person index:
@@ -90,7 +90,7 @@ class SkeletonDetector:
             # If a person was detected with this index:
             if self.__xnect.is_person_active(person_id):
                 # Construct the keypoints for the person's skeleton.
-                skeleton_keypoints = {}  # type: Dict[str, Skeleton.Keypoint]
+                skeleton_keypoints = {}  # type: Dict[str, Skeleton3D.Keypoint]
 
                 # For each joint (ignoring the feet, as in the sample code, as they can be unstable):
                 for joint_id in range(self.__xnect.get_num_of_3d_joints() - 2):
@@ -100,10 +100,10 @@ class SkeletonDetector:
                     position[0] *= -1
                     position[1] *= -1
                     position = GeometryUtil.apply_rigid_transform(world_from_camera, position)
-                    skeleton_keypoints[name] = Skeleton.Keypoint(name, position)
+                    skeleton_keypoints[name] = Skeleton3D.Keypoint(name, position)
 
                 # Add a skeleton based on the keypoints to the list.
-                skeletons.append(Skeleton(skeleton_keypoints, self.__keypoint_pairs))
+                skeletons.append(Skeleton3D(skeleton_keypoints, self.__keypoint_pairs))
 
                 # Update the output visualisation if requested.
                 if visualise:
