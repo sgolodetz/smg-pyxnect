@@ -5,7 +5,7 @@ import os
 from typing import Dict, List, Tuple
 
 from smg.pyxnect import XNect
-from smg.skeletons import Skeleton3D
+from smg.skeletons import Keypoint, Skeleton3D
 from smg.utility import GeometryUtil
 
 
@@ -90,7 +90,7 @@ class SkeletonDetector:
             # If a person was detected with this index:
             if self.__xnect.is_person_active(person_id):
                 # Construct the keypoints for the person's skeleton.
-                skeleton_keypoints = {}  # type: Dict[str, Skeleton3D.Keypoint]
+                skeleton_keypoints = {}  # type: Dict[str, Keypoint]
 
                 # For each joint (ignoring the feet, as in the sample code, as they can be unstable):
                 for joint_id in range(self.__xnect.get_num_of_3d_joints() - 2):
@@ -100,7 +100,7 @@ class SkeletonDetector:
                     position[0] *= -1
                     position[1] *= -1
                     position = GeometryUtil.apply_rigid_transform(world_from_camera, position)
-                    skeleton_keypoints[name] = Skeleton3D.Keypoint(name, position)
+                    skeleton_keypoints[name] = Keypoint(name, position)
 
                 # Add a skeleton based on the keypoints to the list.
                 skeletons.append(Skeleton3D(skeleton_keypoints, self.__keypoint_pairs))
