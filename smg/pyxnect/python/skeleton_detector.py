@@ -92,10 +92,7 @@ class SkeletonDetector:
         for person_id in range(self.__xnect.get_num_of_people()):
             # If a person was detected with this index:
             if self.__xnect.is_person_active(person_id):
-                # Construct the keypoints for the person's skeleton.
-                skeleton_keypoints = {}  # type: Dict[str, Keypoint]
-
-                # TODO
+                # Obtain the global pose of the person's mid-hip keypoint from XNect, and record it.
                 midhip_w_t_c = np.eye(4)  # type: np.ndarray
                 midhip_w_t_c[0:3, 0:3] = SkeletonDetector.__from_xnect_global_rotation(
                     self.__xnect.get_skeleton_global_rotation(person_id)
@@ -105,7 +102,8 @@ class SkeletonDetector:
                 )
                 global_keypoint_poses = {"MidHip": midhip_w_t_c}  # type: Dict[str, np.ndarray]
 
-                # TODO
+                # Construct the keypoints for the person's skeleton and obtain their local rotations from XNect.
+                skeleton_keypoints = {}        # type: Dict[str, Keypoint]
                 local_keypoint_rotations = {}  # type: Dict[str, np.ndarray]
 
                 # For each joint (ignoring the feet, as in the sample code, as they can be unstable):
@@ -117,12 +115,12 @@ class SkeletonDetector:
                     )
                     skeleton_keypoints[name] = Keypoint(name, position)
 
-                    # TODO
+                    # Obtain the local rotation of the joint from XNect and record it.
                     local_keypoint_rotations[name] = SkeletonDetector.__from_xnect_local_rotation(
                         self.__xnect.get_joint_local_rotation(person_id, joint_id)
                     )
 
-                # Add a skeleton based on the keypoints to the list.
+                # Make the skeleton and add it to the list.
                 if use_xnect_poses:
                     skeletons.append(Skeleton3D(
                         skeleton_keypoints, self.__keypoint_pairs, global_keypoint_poses, local_keypoint_rotations
