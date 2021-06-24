@@ -68,14 +68,14 @@ class SkeletonDetector:
 
     # PUBLIC METHODS
 
-    def detect_skeletons(self, image: np.ndarray, world_from_camera: np.ndarray, *, use_xnect_rotations: bool = False,
+    def detect_skeletons(self, image: np.ndarray, world_from_camera: np.ndarray, *, use_xnect_poses: bool = False,
                          visualise: bool = False) -> Tuple[List[Skeleton3D], np.ndarray]:
         """
         Detect 3D skeletons in an RGB image using XNect.
 
         :param image:               The RGB image.
         :param world_from_camera:   The camera pose.
-        :param use_xnect_rotations: Whether to use the local rotations produced by XNect.
+        :param use_xnect_poses:     Whether to use the joint poses produced by XNect.
         :param visualise:           Whether to make the output visualisation.
         :return:                    A tuple consisting of the detected 3D skeletons and the output visualisation
                                     (if requested).
@@ -103,9 +103,7 @@ class SkeletonDetector:
                 midhip_w_t_c[0:3, 3] = SkeletonDetector.__from_xnect_position(
                     self.__xnect.get_joint3d_ik(person_id, 14), world_from_camera
                 )
-                global_keypoint_poses = {
-                    "MidHip": midhip_w_t_c
-                }  # type: Dict[str, np.ndarray]
+                global_keypoint_poses = {"MidHip": midhip_w_t_c}  # type: Dict[str, np.ndarray]
 
                 # TODO
                 local_keypoint_rotations = {}  # type: Dict[str, np.ndarray]
@@ -125,7 +123,7 @@ class SkeletonDetector:
                     )
 
                 # Add a skeleton based on the keypoints to the list.
-                if use_xnect_rotations:
+                if use_xnect_poses:
                     skeletons.append(Skeleton3D(
                         skeleton_keypoints, self.__keypoint_pairs, global_keypoint_poses, local_keypoint_rotations
                     ))
