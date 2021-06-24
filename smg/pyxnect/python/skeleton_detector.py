@@ -1,7 +1,9 @@
 import cv2
 import numpy as np
 import os
+import vg
 
+from scipy.spatial.transform import Rotation
 from typing import Dict, List, Tuple
 
 from smg.pyxnect import XNect
@@ -66,13 +68,14 @@ class SkeletonDetector:
 
     # PUBLIC METHODS
 
-    def detect_skeletons(self, image: np.ndarray, world_from_camera: np.ndarray, *,
+    def detect_skeletons(self, image: np.ndarray, world_from_camera: np.ndarray, *, use_xnect_rotations: bool = False,
                          visualise: bool = False) -> Tuple[List[Skeleton3D], np.ndarray]:
         """
         Detect 3D skeletons in an RGB image using XNect.
 
         :param image:               The RGB image.
         :param world_from_camera:   The camera pose.
+        :param use_xnect_rotations: Whether to use the local rotations produced by XNect.
         :param visualise:           Whether to make the output visualisation.
         :return:                    A tuple consisting of the detected 3D skeletons and the output visualisation
                                     (if requested).
@@ -92,62 +95,42 @@ class SkeletonDetector:
                 # Construct the keypoints for the person's skeleton.
                 skeleton_keypoints = {}  # type: Dict[str, Keypoint]
 
-                print("===")
-                print(self.__xnect.get_skeleton_global_position(person_id))
-                print(self.__xnect.get_joint3d_pred(person_id, 15))
-                print(self.__xnect.get_joint3d_ik(person_id, 15))
-
                 # TODO
                 midhip_w_t_c = np.eye(4)  # type: np.ndarray
                 midhip_w_t_c[0:3, 0:3] = SkeletonDetector.__from_xnect_global_rotation(
                     self.__xnect.get_skeleton_global_rotation(person_id)
                 )
-                # midhip_w_t_c[0:3, 3] = SkeletonDetector.__from_xnect_position(
-                #    self.__xnect.get_skeleton_global_position(person_id)
-                # )
                 midhip_w_t_c[0:3, 3] = SkeletonDetector.__from_xnect_position(
                     self.__xnect.get_joint3d_ik(person_id, 14), world_from_camera
                 )
-                # midhip_w_t_c[1, 3] *= -1
-                print(midhip_w_t_c[0:3, 3])
-                print(self.__xnect.get_skeleton_global_rotation(person_id))
-                # SkeletonDetector.__from_xnect_position(
-                #    self.__xnect.get_skeleton_global_position(person_id)
-                # )
                 global_keypoint_poses = {
                     "MidHip": midhip_w_t_c
                 }  # type: Dict[str, np.ndarray]
 
                 # TODO
-                local_keypoint_rotations = {
-                    "MidHip": np.eye(3)
-                }  # type: Dict[str, np.ndarray]
+                local_keypoint_rotations = {}  # type: Dict[str, np.ndarray]
 
                 # For each joint (ignoring the feet, as in the sample code, as they can be unstable):
                 for joint_id in range(self.__xnect.get_num_of_3d_joints() - 2):
                     # Make a keypoint for the joint and add it to the dictionary.
                     name = self.__keypoint_names[joint_id]
-                    # position = SkeletonDetector.__from_xnect_position(self.__xnect.get_joint3d_ik(person_id, joint_id))
-                    # position = GeometryUtil.apply_rigid_transform(world_from_camera, position)
                     position = SkeletonDetector.__from_xnect_position(
                         self.__xnect.get_joint3d_ik(person_id, joint_id), world_from_camera
                     )
                     skeleton_keypoints[name] = Keypoint(name, position)
 
                     # TODO
-                    # local_keypoint_rotations[name] = SkeletonDetector.__from_xnect_rotation(
-                    #     np.linalg.inv(self.__xnect.get_joint_local_rotation(person_id, joint_id))
-                    # )
                     local_keypoint_rotations[name] = SkeletonDetector.__from_xnect_local_rotation(
                         self.__xnect.get_joint_local_rotation(person_id, joint_id)
                     )
-                    # local_keypoint_rotations[name] = self.__xnect.get_joint_local_rotation(person_id, joint_id)
-                    print(name, self.__xnect.get_joint_local_rotation(person_id, joint_id))
 
                 # Add a skeleton based on the keypoints to the list.
-                skeletons.append(Skeleton3D(
-                    skeleton_keypoints, self.__keypoint_pairs, global_keypoint_poses, local_keypoint_rotations
-                ))
+                if use_xnect_rotations:
+                    skeletons.append(Skeleton3D(
+                        skeleton_keypoints, self.__keypoint_pairs, global_keypoint_poses, local_keypoint_rotations
+                    ))
+                else:
+                    skeletons.append(Skeleton3D(skeleton_keypoints, self.__keypoint_pairs))
 
                 # Update the output visualisation if requested.
                 if visualise:
@@ -242,19 +225,16 @@ class SkeletonDetector:
 
     @staticmethod
     def __from_xnect_local_rotation(rot: np.ndarray) -> np.ndarray:
-        import vg
-        from scipy.spatial.transform import Rotation
-        r = Rotation.from_matrix(rot).as_rotvec()
-        axis, angle = vg.normalize(r), np.linalg.norm(r)
-        if angle > 0:
-            m = np.array([
-                [-1, 0, 0],
-                [0, 1, 0],
-                [0, 0, -1]
-            ])
-            axis = m @ axis
-            rot = Rotation.from_rotvec(axis * angle).as_matrix()
-        return rot
+        """
+        TODO
+
+        :param rot: TODO
+        :return:    TODO
+        """
+        result = Rotation.from_matrix(rot).as_rotvec()  # type: np.ndarray
+        result[0] *= -1
+        result[2] *= -1
+        return Rotation.from_rotvec(result).as_matrix()
 
     @staticmethod
     def __from_xnect_position(pos: np.ndarray, world_from_camera: np.ndarray) -> np.ndarray:

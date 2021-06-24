@@ -15,12 +15,13 @@ from smg.pyxnect import SkeletonDetector
 from smg.skeletons import Skeleton3D
 
 
-def make_frame_processor(skeleton_detector: SkeletonDetector, *, debug: bool = False) -> \
-        Callable[[np.ndarray, np.ndarray, np.ndarray], List[Skeleton3D]]:
+def make_frame_processor(skeleton_detector: SkeletonDetector, use_xnect_rotations: bool, *,
+                         debug: bool = False) -> Callable[[np.ndarray, np.ndarray, np.ndarray], List[Skeleton3D]]:
     """
     Make a frame processor for a skeleton detection service that forwards to an XNect skeleton detector.
 
     :param skeleton_detector:   The XNect skeleton detector.
+    :param use_xnect_rotations: Whether to use the local joint rotations produced by XNect.
     :param debug:               Whether to print debug messages.
     :return:                    The frame processor.
     """
@@ -38,7 +39,14 @@ def make_frame_processor(skeleton_detector: SkeletonDetector, *, debug: bool = F
         if debug:
             start = timer()
 
-        skeletons, _ = skeleton_detector.detect_skeletons(colour_image, world_from_camera)
+        # TODO
+        skeletons, _ = skeleton_detector.detect_skeletons(
+            colour_image, world_from_camera, use_xnect_rotations=use_xnect_rotations
+        )
+
+        # TODO
+        if not use_xnect_rotations:
+            skeletons = [s.make_bare() for s in skeletons]
 
         if debug:
             end = timer()
@@ -58,6 +66,10 @@ def main() -> None:
         "--port", "-p", type=int, default=7852,
         help="the port on which the service should listen for a connection"
     )
+    parser.add_argument(
+        "--use_xnect_rotations", action="store_true",
+        help="whether to use the local joint rotations produced by XNect"
+    )
     args = vars(parser.parse_args())  # type: dict
 
     # Initialise PyGame and create a hidden window so that we can use OpenGL.
@@ -69,7 +81,9 @@ def main() -> None:
     skeleton_detector = SkeletonDetector()
 
     # Run the skeleton detection service.
-    service = SkeletonDetectionService(make_frame_processor(skeleton_detector), args["port"])
+    service = SkeletonDetectionService(
+        make_frame_processor(skeleton_detector, args["use_xnect_rotations"]), args["port"]
+    )
     service.run()
 
 
