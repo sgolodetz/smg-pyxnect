@@ -92,18 +92,62 @@ class SkeletonDetector:
                 # Construct the keypoints for the person's skeleton.
                 skeleton_keypoints = {}  # type: Dict[str, Keypoint]
 
+                print("===")
+                print(self.__xnect.get_skeleton_global_position(person_id))
+                print(self.__xnect.get_joint3d_pred(person_id, 15))
+                print(self.__xnect.get_joint3d_ik(person_id, 15))
+
+                # TODO
+                midhip_w_t_c = np.eye(4)  # type: np.ndarray
+                midhip_w_t_c[0:3, 0:3] = SkeletonDetector.__from_xnect_global_rotation(
+                    self.__xnect.get_skeleton_global_rotation(person_id)
+                )
+                # midhip_w_t_c[0:3, 3] = SkeletonDetector.__from_xnect_position(
+                #    self.__xnect.get_skeleton_global_position(person_id)
+                # )
+                midhip_w_t_c[0:3, 3] = SkeletonDetector.__from_xnect_position(
+                    self.__xnect.get_joint3d_ik(person_id, 14), world_from_camera
+                )
+                # midhip_w_t_c[1, 3] *= -1
+                print(midhip_w_t_c[0:3, 3])
+                print(self.__xnect.get_skeleton_global_rotation(person_id))
+                # SkeletonDetector.__from_xnect_position(
+                #    self.__xnect.get_skeleton_global_position(person_id)
+                # )
+                global_keypoint_poses = {
+                    "MidHip": midhip_w_t_c
+                }  # type: Dict[str, np.ndarray]
+
+                # TODO
+                local_keypoint_rotations = {
+                    "MidHip": np.eye(3)
+                }  # type: Dict[str, np.ndarray]
+
                 # For each joint (ignoring the feet, as in the sample code, as they can be unstable):
                 for joint_id in range(self.__xnect.get_num_of_3d_joints() - 2):
                     # Make a keypoint for the joint and add it to the dictionary.
                     name = self.__keypoint_names[joint_id]
-                    position = self.__xnect.get_joint3d_ik(person_id, joint_id) / 1000
-                    position[0] *= -1
-                    position[1] *= -1
-                    position = GeometryUtil.apply_rigid_transform(world_from_camera, position)
+                    # position = SkeletonDetector.__from_xnect_position(self.__xnect.get_joint3d_ik(person_id, joint_id))
+                    # position = GeometryUtil.apply_rigid_transform(world_from_camera, position)
+                    position = SkeletonDetector.__from_xnect_position(
+                        self.__xnect.get_joint3d_ik(person_id, joint_id), world_from_camera
+                    )
                     skeleton_keypoints[name] = Keypoint(name, position)
 
+                    # TODO
+                    # local_keypoint_rotations[name] = SkeletonDetector.__from_xnect_rotation(
+                    #     np.linalg.inv(self.__xnect.get_joint_local_rotation(person_id, joint_id))
+                    # )
+                    local_keypoint_rotations[name] = SkeletonDetector.__from_xnect_local_rotation(
+                        self.__xnect.get_joint_local_rotation(person_id, joint_id)
+                    )
+                    # local_keypoint_rotations[name] = self.__xnect.get_joint_local_rotation(person_id, joint_id)
+                    print(name, self.__xnect.get_joint_local_rotation(person_id, joint_id))
+
                 # Add a skeleton based on the keypoints to the list.
-                skeletons.append(Skeleton3D(skeleton_keypoints, self.__keypoint_pairs))
+                skeletons.append(Skeleton3D(
+                    skeleton_keypoints, self.__keypoint_pairs, global_keypoint_poses, local_keypoint_rotations
+                ))
 
                 # Update the output visualisation if requested.
                 if visualise:
@@ -179,3 +223,49 @@ class SkeletonDetector:
         :return:            The colour assigned to the person, as a list of integers.
         """
         return [int(_) for _ in self.__xnect.get_person_colour(person_id)]
+
+    # PRIVATE STATIC METHODS
+
+    @staticmethod
+    def __from_xnect_global_rotation(rot: np.ndarray) -> np.ndarray:
+        """
+        TODO
+
+        :param rot: TODO
+        :return:    TODO
+        """
+        return np.linalg.inv(rot) @ np.array([
+            [1, 0, 0],
+            [0, -1, 0],
+            [0, 0, -1]
+        ])
+
+    @staticmethod
+    def __from_xnect_local_rotation(rot: np.ndarray) -> np.ndarray:
+        import vg
+        from scipy.spatial.transform import Rotation
+        r = Rotation.from_matrix(rot).as_rotvec()
+        axis, angle = vg.normalize(r), np.linalg.norm(r)
+        if angle > 0:
+            m = np.array([
+                [-1, 0, 0],
+                [0, 1, 0],
+                [0, 0, -1]
+            ])
+            axis = m @ axis
+            rot = Rotation.from_rotvec(axis * angle).as_matrix()
+        return rot
+
+    @staticmethod
+    def __from_xnect_position(pos: np.ndarray, world_from_camera: np.ndarray) -> np.ndarray:
+        """
+        TODO
+
+        :param pos:                 TODO
+        :param world_from_camera:   TODO
+        :return:                    TODO
+        """
+        result = pos / 1000  # type: np.ndarray
+        result[0] *= -1
+        result[1] *= -1
+        return GeometryUtil.apply_rigid_transform(world_from_camera, result)
