@@ -92,14 +92,14 @@ class SkeletonDetector:
             # If a person was detected with this index:
             if self.__xnect.is_person_active(person_id):
                 # Obtain the global pose of the person's mid-hip keypoint from XNect, and record it.
-                midhip_w_t_c = np.eye(4)  # type: np.ndarray
-                midhip_w_t_c[0:3, 0:3] = SkeletonDetector.__from_xnect_global_rotation(
+                world_from_midhip = np.eye(4)  # type: np.ndarray
+                world_from_midhip[0:3, 0:3] = SkeletonDetector.__from_xnect_global_rotation(
                     self.__xnect.get_skeleton_global_rotation(person_id)
                 )
-                midhip_w_t_c[0:3, 3] = SkeletonDetector.__from_xnect_position(
-                    self.__xnect.get_joint3d_ik(person_id, 14), world_from_camera
+                world_from_midhip[0:3, 3] = SkeletonDetector.__from_xnect_position(
+                    self.__xnect.get_joint3d_ik(person_id, 14), world_from_camera  # FIXME: Replace the "14".
                 )
-                global_keypoint_poses = {"MidHip": midhip_w_t_c}  # type: Dict[str, np.ndarray]
+                global_keypoint_poses = {"MidHip": world_from_midhip}  # type: Dict[str, np.ndarray]
 
                 # Construct the keypoints for the person's skeleton and obtain their local rotations from XNect.
                 skeleton_keypoints = {}        # type: Dict[str, Keypoint]
