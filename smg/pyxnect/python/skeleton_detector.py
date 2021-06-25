@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 import os
-import vg
 
 from scipy.spatial.transform import Rotation
 from typing import Dict, List, Tuple
@@ -208,10 +207,13 @@ class SkeletonDetector:
     @staticmethod
     def __from_xnect_global_rotation(rot: np.ndarray) -> np.ndarray:
         """
-        TODO
+        Transform the global skeleton rotation from the XNect coordinate system to our one.
 
-        :param rot: TODO
-        :return:    TODO
+        .. note::
+            This was derived a bit empirically to be honest, but it seems to work.
+
+        :param rot: The global skeleton rotation in the XNect coordinate system.
+        :return:    The equivalent rotation in our coordinate system.
         """
         return np.linalg.inv(rot) @ np.array([
             [1, 0, 0],
@@ -222,10 +224,13 @@ class SkeletonDetector:
     @staticmethod
     def __from_xnect_local_rotation(rot: np.ndarray) -> np.ndarray:
         """
-        TODO
+        Transform a local keypoint rotation from the XNect coordinate system to our one.
 
-        :param rot: TODO
-        :return:    TODO
+        .. note::
+            This was derived a bit empirically to be honest, but it seems to work.
+
+        :param rot: The local keypoint rotation in the XNect coordinate system.
+        :return:    The equivalent rotation in our coordinate system.
         """
         result = Rotation.from_matrix(rot).as_rotvec()  # type: np.ndarray
         result[0] *= -1
@@ -235,11 +240,14 @@ class SkeletonDetector:
     @staticmethod
     def __from_xnect_position(pos: np.ndarray, world_from_camera: np.ndarray) -> np.ndarray:
         """
-        TODO
+        Transform a position from the XNect coordinate system to our one.
 
-        :param pos:                 TODO
-        :param world_from_camera:   TODO
-        :return:                    TODO
+        .. note::
+            This was derived a bit empirically to be honest, but it seems to work.
+
+        :param pos:                 The position in the XNect coordinate system.
+        :param world_from_camera:   The camera pose, as a transformation from camera space to world space.
+        :return:                    The equivalent position in our coordinate system.
         """
         result = pos / 1000  # type: np.ndarray
         result[0] *= -1
