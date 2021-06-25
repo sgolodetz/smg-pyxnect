@@ -44,9 +44,9 @@ def make_frame_processor(skeleton_detector: SkeletonDetector, *, debug: bool = F
             colour_image, world_from_camera, use_xnect_poses=use_xnect_poses
         )
 
-        # If we're using the computed keypoint poses rather than the ones from XNect, remove them so that they will
-        # be recomputed by the client (this is necessary if we want to visualise the keypoint orienters, since those
-        # can't be easily sent over the network).
+        # If we're using the computed keypoint orientation information rather than the local rotations provided by
+        # XNect, remove it so that it will be recomputed by the client (this is necessary if we want to visualise
+        # the keypoint orienters, since those can't be easily sent over the network).
         if not use_xnect_poses:
             skeletons = [s.make_bare() for s in skeletons]
 
