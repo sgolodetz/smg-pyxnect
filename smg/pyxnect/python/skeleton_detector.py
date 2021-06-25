@@ -26,6 +26,9 @@ class SkeletonDetector:
 
         :param exe_dir:     The directory containing the XNect executable.
         """
+        # Specify the index that XNect uses to refer to the mid-hip keypoint.
+        self.__midhip_keypoint_idx = 14  # type: int
+
         # Specify the keypoint names (see xnect_implementation.h).
         self.__keypoint_names = {
             0: "Head Top",
@@ -97,7 +100,7 @@ class SkeletonDetector:
                     self.__xnect.get_skeleton_global_rotation(person_id)
                 )
                 world_from_midhip[0:3, 3] = SkeletonDetector.__from_xnect_position(
-                    self.__xnect.get_joint3d_ik(person_id, 14), world_from_camera  # FIXME: Replace the "14".
+                    self.__xnect.get_joint3d_ik(person_id, self.__midhip_keypoint_idx), world_from_camera
                 )
                 global_keypoint_poses = {"MidHip": world_from_midhip}  # type: Dict[str, np.ndarray]
 
