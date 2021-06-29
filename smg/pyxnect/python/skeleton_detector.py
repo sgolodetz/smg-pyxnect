@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 from scipy.spatial.transform import Rotation
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from smg.pyxnect import XNect
 from smg.skeletons import Keypoint, Skeleton3D
@@ -26,6 +26,9 @@ class SkeletonDetector:
 
         :param exe_dir:     The directory containing the XNect executable.
         """
+        # Make a note of the directory containing the XNect executable.
+        self.__exe_dir = exe_dir  # type: str
+
         # Specify the index that XNect uses to refer to the mid-hip keypoint.
         self.__midhip_keypoint_idx = 14  # type: int
 
@@ -62,11 +65,9 @@ class SkeletonDetector:
             ]
         ]  # type: List[Tuple[str, str]]
 
-        # Change to the XNect executable directory.
-        os.chdir(exe_dir)
-
-        # Initialise XNect.
-        self.__xnect = XNect()
+        # Start XNect.
+        self.__xnect = None  # type: Optional[XNect]
+        self.restart()
 
     # PUBLIC METHODS
 
@@ -136,6 +137,20 @@ class SkeletonDetector:
                     self.__draw_joints(visualisation, person_id)
 
         return skeletons, visualisation
+
+    def restart(self) -> None:
+        """
+        Start or restart the skeleton detector.
+
+        .. note::
+            It's important to call this when changing from one sequence of images to another, since XNect
+            tries to achieve temporal consistency and maintains state as part of that.
+        """
+        # Change to the XNect executable directory.
+        os.chdir(self.__exe_dir)
+
+        # Initialise XNect.
+        self.__xnect = XNect()
 
     # PRIVATE METHODS
 

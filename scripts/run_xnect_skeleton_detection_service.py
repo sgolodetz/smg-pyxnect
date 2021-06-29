@@ -84,7 +84,8 @@ def main() -> None:
 
     # Run the skeleton detection service.
     service = SkeletonDetectionService(
-        make_frame_processor(skeleton_detector, use_xnect_poses=args["use_xnect_poses"]), args["port"]
+        make_frame_processor(skeleton_detector, use_xnect_poses=args["use_xnect_poses"]), args["port"],
+        post_client_hook=skeleton_detector.restart
     )
     service.run()
 
