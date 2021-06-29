@@ -2,10 +2,11 @@ import cv2
 import numpy as np
 import os
 
+from scipy.spatial.transform import Rotation
 from typing import Dict, List, Tuple
 
 from smg.pyxnect import XNect
-from smg.skeletons import Skeleton
+from smg.skeletons import Keypoint, Skeleton3D
 from smg.utility import GeometryUtil
 
 
@@ -25,6 +26,9 @@ class SkeletonDetector:
 
         :param exe_dir:     The directory containing the XNect executable.
         """
+        # Specify the index that XNect uses to refer to the mid-hip keypoint.
+        self.__midhip_keypoint_idx = 14  # type: int
+
         # Specify the keypoint names (see xnect_implementation.h).
         self.__keypoint_names = {
             0: "Head Top",
@@ -66,13 +70,14 @@ class SkeletonDetector:
 
     # PUBLIC METHODS
 
-    def detect_skeletons(self, image: np.ndarray, world_from_camera: np.ndarray, *,
-                         visualise: bool = False) -> Tuple[List[Skeleton], np.ndarray]:
+    def detect_skeletons(self, image: np.ndarray, world_from_camera: np.ndarray, *, use_xnect_poses: bool = False,
+                         visualise: bool = False) -> Tuple[List[Skeleton3D], np.ndarray]:
         """
         Detect 3D skeletons in an RGB image using XNect.
 
         :param image:               The RGB image.
         :param world_from_camera:   The camera pose.
+        :param use_xnect_poses:     Whether to use the joint poses produced by XNect.
         :param visualise:           Whether to make the output visualisation.
         :return:                    A tuple consisting of the detected 3D skeletons and the output visualisation
                                     (if requested).
@@ -82,28 +87,48 @@ class SkeletonDetector:
         self.__xnect.process_image(image.copy())
 
         # Make the actual skeletons, and also the output visualisation if requested.
-        skeletons = []                # type: List[Skeleton]
+        skeletons = []                # type: List[Skeleton3D]
         visualisation = image.copy()  # type: np.ndarray
 
         # For each person index:
         for person_id in range(self.__xnect.get_num_of_people()):
             # If a person was detected with this index:
             if self.__xnect.is_person_active(person_id):
-                # Construct the keypoints for the person's skeleton.
-                skeleton_keypoints = {}  # type: Dict[str, Skeleton.Keypoint]
+                # Obtain the global pose of the person's mid-hip keypoint from XNect, and record it.
+                world_from_midhip = np.eye(4)  # type: np.ndarray
+                world_from_midhip[0:3, 0:3] = SkeletonDetector.__from_xnect_global_rotation(
+                    self.__xnect.get_skeleton_global_rotation(person_id)
+                )
+                world_from_midhip[0:3, 3] = SkeletonDetector.__from_xnect_position(
+                    self.__xnect.get_joint3d_ik(person_id, self.__midhip_keypoint_idx), world_from_camera
+                )
+                global_keypoint_poses = {"MidHip": world_from_midhip}  # type: Dict[str, np.ndarray]
+
+                # Construct the keypoints for the person's skeleton and obtain their local rotations from XNect.
+                skeleton_keypoints = {}        # type: Dict[str, Keypoint]
+                local_keypoint_rotations = {}  # type: Dict[str, np.ndarray]
 
                 # For each joint (ignoring the feet, as in the sample code, as they can be unstable):
                 for joint_id in range(self.__xnect.get_num_of_3d_joints() - 2):
                     # Make a keypoint for the joint and add it to the dictionary.
                     name = self.__keypoint_names[joint_id]
-                    position = self.__xnect.get_joint3d_ik(person_id, joint_id) / 1000
-                    position[0] *= -1
-                    position[1] *= -1
-                    position = GeometryUtil.apply_rigid_transform(world_from_camera, position)
-                    skeleton_keypoints[name] = Skeleton.Keypoint(name, position)
+                    position = SkeletonDetector.__from_xnect_position(
+                        self.__xnect.get_joint3d_ik(person_id, joint_id), world_from_camera
+                    )
+                    skeleton_keypoints[name] = Keypoint(name, position)
 
-                # Add a skeleton based on the keypoints to the list.
-                skeletons.append(Skeleton(skeleton_keypoints, self.__keypoint_pairs))
+                    # Obtain the local rotation of the joint from XNect and record it.
+                    local_keypoint_rotations[name] = SkeletonDetector.__from_xnect_local_rotation(
+                        self.__xnect.get_joint_local_rotation(person_id, joint_id)
+                    )
+
+                # Make the skeleton and add it to the list.
+                if use_xnect_poses:
+                    skeletons.append(Skeleton3D(
+                        skeleton_keypoints, self.__keypoint_pairs, global_keypoint_poses, local_keypoint_rotations
+                    ))
+                else:
+                    skeletons.append(Skeleton3D(skeleton_keypoints, self.__keypoint_pairs))
 
                 # Update the output visualisation if requested.
                 if visualise:
@@ -179,3 +204,55 @@ class SkeletonDetector:
         :return:            The colour assigned to the person, as a list of integers.
         """
         return [int(_) for _ in self.__xnect.get_person_colour(person_id)]
+
+    # PRIVATE STATIC METHODS
+
+    @staticmethod
+    def __from_xnect_global_rotation(rot: np.ndarray) -> np.ndarray:
+        """
+        Transform the global skeleton rotation from the XNect coordinate system to our one.
+
+        .. note::
+            This was derived a bit empirically to be honest, but it seems to work.
+
+        :param rot: The global skeleton rotation in the XNect coordinate system.
+        :return:    The equivalent rotation in our coordinate system.
+        """
+        return np.linalg.inv(rot) @ np.array([
+            [1, 0, 0],
+            [0, -1, 0],
+            [0, 0, -1]
+        ])
+
+    @staticmethod
+    def __from_xnect_local_rotation(rot: np.ndarray) -> np.ndarray:
+        """
+        Transform a local keypoint rotation from the XNect coordinate system to our one.
+
+        .. note::
+            This was derived a bit empirically to be honest, but it seems to work.
+
+        :param rot: The local keypoint rotation in the XNect coordinate system.
+        :return:    The equivalent rotation in our coordinate system.
+        """
+        result = Rotation.from_matrix(rot).as_rotvec()  # type: np.ndarray
+        result[0] *= -1
+        result[2] *= -1
+        return Rotation.from_rotvec(result).as_matrix()
+
+    @staticmethod
+    def __from_xnect_position(pos: np.ndarray, world_from_camera: np.ndarray) -> np.ndarray:
+        """
+        Transform a position from the XNect coordinate system to our one.
+
+        .. note::
+            This was derived a bit empirically to be honest, but it seems to work.
+
+        :param pos:                 The position in the XNect coordinate system.
+        :param world_from_camera:   The camera pose, as a transformation from camera space to world space.
+        :return:                    The equivalent position in our coordinate system.
+        """
+        result = pos / 1000  # type: np.ndarray
+        result[0] *= -1
+        result[1] *= -1
+        return GeometryUtil.apply_rigid_transform(world_from_camera, result)

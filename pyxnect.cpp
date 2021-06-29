@@ -20,6 +20,19 @@ PYBIND11_MODULE(pyxnect, m)
       py::call_guard<py::gil_scoped_release>()
     )
     .def(
+      "get_joint_local_rotation",
+      [](XNECT& self, int p, int joint)
+      {
+        Eigen::Matrix3f rawResult = self.GetJointLocalRotation(p, joint);
+        auto result = py::array_t<double>(std::vector<ptrdiff_t>{3, 3});
+        py::buffer_info buf = result.request();
+        double *ptr = (double*)buf.ptr;
+        for(int i = 0; i < 9; ++i) ptr[i] = rawResult(i / 3, i % 3);
+        return result;
+      }/*,
+      py::call_guard<py::gil_scoped_release>()*/
+    )
+    .def(
       "get_joint3d_ik",
       [](XNECT& self, int person, int joint)
       {
@@ -57,6 +70,32 @@ PYBIND11_MODULE(pyxnect, m)
         py::buffer_info buf = result.request();
         int *ptr = (int*)buf.ptr;
         for(int i = 0; i < 3; ++i) ptr[i] = rawResult[i];
+        return result;
+      }/*,
+      py::call_guard<py::gil_scoped_release>()*/
+    )
+    .def(
+      "get_skeleton_global_position",
+      [](XNECT& self, int p)
+      {
+        Eigen::Vector3f rawResult = self.GetSkeletonGlobalPosition(p);
+        auto result = py::array_t<double>(3);
+        py::buffer_info buf = result.request();
+        double *ptr = (double*)buf.ptr;
+        for(int i = 0; i < 3; ++i) ptr[i] = rawResult(i);
+        return result;
+      }/*,
+      py::call_guard<py::gil_scoped_release>()*/
+    )
+    .def(
+      "get_skeleton_global_rotation",
+      [](XNECT& self, int p)
+      {
+        Eigen::Matrix3f rawResult = self.GetSkeletonGlobalRotation(p);
+        auto result = py::array_t<double>(std::vector<ptrdiff_t>{3, 3});
+        py::buffer_info buf = result.request();
+        double *ptr = (double*)buf.ptr;
+        for(int i = 0; i < 9; ++i) ptr[i] = rawResult(i / 3, i % 3);
         return result;
       }/*,
       py::call_guard<py::gil_scoped_release>()*/

@@ -12,21 +12,22 @@ from typing import Callable, List, Tuple
 
 from smg.comms.skeletons import SkeletonDetectionService
 from smg.pyxnect import SkeletonDetector
-from smg.skeletons import Skeleton
+from smg.skeletons import Skeleton3D
 
 
-def make_frame_processor(skeleton_detector: SkeletonDetector, *, debug: bool = False) -> \
-        Callable[[np.ndarray, np.ndarray, np.ndarray], List[Skeleton]]:
+def make_frame_processor(skeleton_detector: SkeletonDetector, *, debug: bool = False, use_xnect_poses: bool) \
+        -> Callable[[np.ndarray, np.ndarray, np.ndarray], List[Skeleton3D]]:
     """
     Make a frame processor for a skeleton detection service that forwards to an XNect skeleton detector.
 
     :param skeleton_detector:   The XNect skeleton detector.
     :param debug:               Whether to print debug messages.
+    :param use_xnect_poses:     Whether to use the joint poses produced by XNect.
     :return:                    The frame processor.
     """
     # noinspection PyUnusedLocal
     def detect_skeletons(colour_image: np.ndarray, depth_image: np.ndarray,
-                         world_from_camera: np.ndarray) -> List[Skeleton]:
+                         world_from_camera: np.ndarray) -> List[Skeleton3D]:
         """
         Detect 3D skeletons in an RGB image using XNect.
 
@@ -38,7 +39,16 @@ def make_frame_processor(skeleton_detector: SkeletonDetector, *, debug: bool = F
         if debug:
             start = timer()
 
-        skeletons, _ = skeleton_detector.detect_skeletons(colour_image, world_from_camera)
+        # Detect the skeletons.
+        skeletons, _ = skeleton_detector.detect_skeletons(
+            colour_image, world_from_camera, use_xnect_poses=use_xnect_poses
+        )
+
+        # If we're using the computed keypoint orientation information rather than the local rotations provided by
+        # XNect, remove it so that it will be recomputed by the client (this is necessary if we want to visualise
+        # the keypoint orienters, since those can't be easily sent over the network).
+        if not use_xnect_poses:
+            skeletons = [s.make_bare() for s in skeletons]
 
         if debug:
             end = timer()
@@ -58,6 +68,10 @@ def main() -> None:
         "--port", "-p", type=int, default=7852,
         help="the port on which the service should listen for a connection"
     )
+    parser.add_argument(
+        "--use_xnect_poses", action="store_true",
+        help="whether to use the joint poses produced by XNect"
+    )
     args = vars(parser.parse_args())  # type: dict
 
     # Initialise PyGame and create a hidden window so that we can use OpenGL.
@@ -69,7 +83,9 @@ def main() -> None:
     skeleton_detector = SkeletonDetector()
 
     # Run the skeleton detection service.
-    service = SkeletonDetectionService(make_frame_processor(skeleton_detector), args["port"])
+    service = SkeletonDetectionService(
+        make_frame_processor(skeleton_detector, use_xnect_poses=args["use_xnect_poses"]), args["port"]
+    )
     service.run()
 
 
