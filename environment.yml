@@ -22,8 +22,10 @@ dependencies:
     - func-timeout==4.3.5
     - kiwisolver==1.1.0
     - matplotlib==3.0.3
+    - netifaces==0.11.0
     - opencv-contrib-python==3.4.2.16
     - openni==2.3.0
+    - pillow==7.2.0
     - pybind11==2.6.2
     - pygame==2.0.1
     - pyopengl==3.1.5
